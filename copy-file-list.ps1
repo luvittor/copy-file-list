@@ -18,8 +18,18 @@ Get-Content $envFilePath | ForEach-Object {
         $key = $matches[1]
         $value = $matches[2]
         if ($parameters.ContainsKey($key)) {
-            # Converter o caminho relativo para absoluto, se necessário
-            $parameters[$key] = (Resolve-Path -Path (Join-Path -Path $scriptDir -ChildPath $value)).Path
+            # Converter o caminho relativo para absoluto, mas usando o diretório base
+            if ($key -eq "DESTINATION_DIR") {
+                $destinationDirFullPath = Join-Path -Path $scriptDir -ChildPath $value
+                # Criar diretório de destino se ele não existir
+                if (!(Test-Path -Path $destinationDirFullPath)) {
+                    Write-Output "Criando diretório de destino: $destinationDirFullPath"
+                    New-Item -Path $destinationDirFullPath -ItemType Directory -Force
+                }
+                $parameters[$key] = $destinationDirFullPath
+            } else {
+                $parameters[$key] = (Resolve-Path -Path (Join-Path -Path $scriptDir -ChildPath $value)).Path
+            }
             Write-Output "Parâmetro carregado: $key = $($parameters[$key])"
         }
     }
@@ -34,14 +44,6 @@ Write-Output "Iniciando processo de cópia dos arquivos..."
 Write-Output "Lista de arquivos: $fileListPath"
 Write-Output "Diretório de origem: $sourceDir"
 Write-Output "Diretório de destino: $destinationDir"
-
-# Verificar se a pasta de destino existe; se não, criar
-if (!(Test-Path -Path $destinationDir)) {
-    Write-Output "Pasta de destino não existe. Criando: $destinationDir"
-    New-Item -Path $destinationDir -ItemType Directory -Force
-} else {
-    Write-Output "Pasta de destino já existe: $destinationDir"
-}
 
 # Ler cada linha do arquivo de lista
 Get-Content $fileListPath | ForEach-Object {
